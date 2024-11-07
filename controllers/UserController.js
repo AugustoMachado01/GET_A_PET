@@ -1,8 +1,11 @@
 const User = require("../models/Users");
+const bcrypt = require("bcrypt");
+
+const createUserToken = require("../helpers/create-user-token");
 
 module.exports = class UserController {
   static async register(req, res) {
-    const { name, phone, email, password, confirmpassword } = req.body;
+    const { name, email, phone, password, confirmpassword } = req.body;
 
     //validations
     if (!name) {
@@ -44,5 +47,24 @@ module.exports = class UserController {
     }
 
     //create password
+    const salt = await bcrypt.genSalt(12);
+    const passwordHash = await bcrypt.hash(password, salt);
+
+    // create a user
+    const user = new User({
+      name,
+      email,
+      phone,
+      password: passwordHash,
+    });
+
+    try {
+      const newUser = await user.save();
+
+      await createUserToken(newUser, req, res);
+    } catch (error) {
+      res.status(400).json({ message: error });
+      console.log(error);
+    }
   }
 };
